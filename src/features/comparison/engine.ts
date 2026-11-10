@@ -35,7 +35,7 @@ export function compareEvidence(brief:Brief,quotes:Quote[],evidence:Evidence[],r
     const late=history.filter(m=>m.facts!.actualDays!>m.facts!.promisedDays!);
     const quality=memories.filter(m=>m.supplierId===q.supplierId&&m.kind==='outcome'&&m.facts?.qualityIssue===true&&!m.facts.resolved);
     const reasons:CandidateResult['reasons']=[{text:total===null?'Delivered cost is incomplete.':`Quoted total: $${(total/100).toFixed(2)} for ${q.quantity} units.`,evidenceIds:sources,memoryIds:[]}];
-    if(history.length)reasons.push({text:`${late.length} late deliveries in ${history.length} recorded orders (${history.map(m=>m.occurredAt.slice(0,10)).join(', ')}).`,evidenceIds:[],memoryIds:history.map(m=>m.id)});
+    if(history.length)reasons.push({text:`${late.length} late deliveries in ${history.length} recorded ${history.length===1?'order':'orders'} (${history.map(m=>m.occurredAt.slice(0,10)).join(', ')}).`,evidenceIds:[],memoryIds:history.map(m=>m.id)});
     else reasons.push({text:'No observed delivery history yet.',evidenceIds:[],memoryIds:[]});
     if(quality.length)reasons.push({text:'An unresolved quality issue needs a follow-up.',evidenceIds:[],memoryIds:quality.map(m=>m.id)});
     if(arrival)reasons.push({text:`Quoted arrival: ${arrival}. This is a supplier promise, not a delivery guarantee.`,evidenceIds:sources,memoryIds:[]});
