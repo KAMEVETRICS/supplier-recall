@@ -4,6 +4,9 @@ export function json(value: unknown, status = 200) {
   return Response.json(value, { status, headers: { 'Cache-Control': 'no-store' } });
 }
 export function respondError(error: unknown) {
+  // Expected failures carry a code; anything else is unexpected and must reach the server logs.
+  if (!(error instanceof ProviderError) && !(error instanceof ZodError))
+    console.error('Unexpected request failure:', error);
   const code =
     error instanceof ProviderError
       ? error.code
