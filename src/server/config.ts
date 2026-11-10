@@ -1,4 +1,24 @@
-export function loadConfig(env:Record<string,string|undefined>=process.env){
-  return {trustedSourceHeader:env.AUTH_TRUSTED_SOURCE_HEADER||'',mode:env.APP_MODE==='live'?'live' as const:'sample' as const,origin:env.APP_ORIGIN||'http://127.0.0.1:3000',databaseUrl:env.DATABASE_URL||'file:./data/recall.db',databaseToken:env.DATABASE_AUTH_TOKEN||undefined,llmBaseUrl:env.LLM_BASE_URL||'https://integrate.api.nvidia.com/v1',llmKey:env.LLM_API_KEY||'',llmModel:env.LLM_MODEL||'',tavilyKey:env.TAVILY_API_KEY||'',tatumKey:env.TATUM_API_KEY||'',memwalKey:env.MEMWAL_PRIVATE_KEY||'',memwalAccount:env.MEMWAL_ACCOUNT_ID||'',memwalUrl:env.MEMWAL_SERVER_URL||'https://relayer.memory.walrus.xyz',namespace:env.MEMWAL_NAMESPACE||'supplier-recall-demo',passwordHash:env.OPERATOR_PASSWORD_HASH||'',sessionSecret:env.SESSION_SECRET||'',sampleDigest:env.SUI_SAMPLE_DIGEST||'',sampleInvoiceJson:env.SUI_SAMPLE_INVOICE_JSON||'',sampleInvoicePath:env.SUI_SAMPLE_INVOICE_PATH||''};
+export function loadConfig(env: Record<string, string | undefined> = process.env) {
+  return {
+    trustedSourceHeader: env.AUTH_TRUSTED_SOURCE_HEADER || '',
+    mode: env.APP_MODE === 'live' ? ('live' as const) : ('sample' as const),
+    origin: env.APP_ORIGIN || 'http://127.0.0.1:3000',
+    databaseUrl: env.DATABASE_URL || 'file:./data/recall.db',
+    databaseToken: env.DATABASE_AUTH_TOKEN || undefined,
+    llmBaseUrl: env.LLM_BASE_URL || 'https://integrate.api.nvidia.com/v1',
+    llmKey: env.LLM_API_KEY || '',
+    llmModel: env.LLM_MODEL || '',
+    tavilyKey: env.TAVILY_API_KEY || '',
+    tatumKey: env.TATUM_API_KEY || '',
+    memwalKey: env.MEMWAL_PRIVATE_KEY || '',
+    memwalAccount: env.MEMWAL_ACCOUNT_ID || '',
+    memwalUrl: env.MEMWAL_SERVER_URL || 'https://relayer.memory.walrus.xyz',
+    namespace: env.MEMWAL_NAMESPACE || 'supplier-recall-demo',
+    passwordHash: env.OPERATOR_PASSWORD_HASH || '',
+    sessionSecret: env.SESSION_SECRET || '',
+    sampleDigest: env.SUI_SAMPLE_DIGEST || '',
+    sampleInvoiceJson: env.SUI_SAMPLE_INVOICE_JSON || '',
+    sampleInvoicePath: env.SUI_SAMPLE_INVOICE_PATH || '',
+  };
 }
-export type AppConfig=ReturnType<typeof loadConfig>;
+export type AppConfig = ReturnType<typeof loadConfig>;

@@ -1,83 +1,1187 @@
 'use client';
 import Link from 'next/link';
-import {useEffect,useMemo,useState} from 'react';
-import {ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Brain,Package,LayoutGrid,SlidersHorizontal,Check,ChevronRight,Clock,History,ShieldCheck,RefreshCw,ExternalLink,LogOut,Leaf,Settings2,Link2,AlertCircle,CheckCircle2} from 'lucide-react';
-import type {WorkspaceSnapshot,Brief,Quote,Supplier,OrderEvent,Comparison,CitedDraft,Invoice,PaymentCheck} from '@/domain/types';
-import {createSampleWorkspace} from '@/domain/fixtures';
-import {compareEvidence} from '@/features/comparison/engine';
-import {templateDraft} from '@/features/comparison/drafts';
-import {api} from '@/client/api';
-import {readSample,writeSample,applySampleEvent} from '@/client/sample-store';
-import {BriefDialog,QuoteDialog,PreferenceDialog,EventDialog,ResearchDialog,DraftDialog,PaymentDialog,Modal} from './dialogs';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowUpRight,
+  ArrowRight,
+  ArrowLeft,
+  Plus,
+  Search,
+  Brain,
+  Package,
+  LayoutGrid,
+  SlidersHorizontal,
+  Check,
+  ChevronRight,
+  Clock,
+  History,
+  ShieldCheck,
+  RefreshCw,
+  ExternalLink,
+  LogOut,
+  Leaf,
+  Settings2,
+  Link2,
+  AlertCircle,
+  CheckCircle2,
+} from 'lucide-react';
+import type {
+  WorkspaceSnapshot,
+  Brief,
+  Quote,
+  Supplier,
+  OrderEvent,
+  Comparison,
+  CitedDraft,
+  Invoice,
+  PaymentCheck,
+} from '@/domain/types';
+import { createSampleWorkspace } from '@/domain/fixtures';
+import { compareEvidence } from '@/features/comparison/engine';
+import { templateDraft } from '@/features/comparison/drafts';
+import { api } from '@/client/api';
+import { readSample, writeSample, applySampleEvent } from '@/client/sample-store';
+import {
+  BriefDialog,
+  QuoteDialog,
+  PreferenceDialog,
+  EventDialog,
+  ResearchDialog,
+  DraftDialog,
+  PaymentDialog,
+  Modal,
+} from './dialogs';
 
-type View='overview'|'suppliers'|'memory'|'orders';
-type Dialog='brief'|'quote'|'preference'|'event'|'research'|'draft'|'payment'|'sources'|'reset'|null;
-const money=(c:number|null)=>c===null?'Not provided':new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(c/100);
-const shortDate=(date:string)=>new Date(`${date.slice(0,10)}T12:00:00Z`).toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'America/Los_Angeles'});
+type View = 'overview' | 'suppliers' | 'memory' | 'orders';
+type Dialog =
+  | 'brief'
+  | 'quote'
+  | 'preference'
+  | 'event'
+  | 'research'
+  | 'draft'
+  | 'payment'
+  | 'sources'
+  | 'reset'
+  | null;
+const money = (c: number | null) =>
+  c === null
+    ? 'Not provided'
+    : new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 2,
+      }).format(c / 100);
+const shortDate = (date: string) =>
+  new Date(`${date.slice(0, 10)}T12:00:00Z`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'America/Los_Angeles',
+  });
 
-export default function Workbench({initial,operator=false,liveConfigured=false}:{initial:WorkspaceSnapshot;operator?:boolean;liveConfigured?:boolean}){
- const [workspace,setWorkspace]=useState(initial);const [view,setView]=useState<View>('overview');const [dialog,setDialog]=useState<Dialog>(null);const [useMemory,setUseMemory]=useState(true);const [search,setSearch]=useState('');const [busy,setBusy]=useState(false);const [notice,setNotice]=useState('');const [error,setError]=useState('');const [authenticated,setAuthenticated]=useState(false);const [password,setPassword]=useState('');const [liveComparison,setLiveComparison]=useState<Comparison|null>(null);const [draft,setDraft]=useState<CitedDraft|null>(null);const [sourceSupplier,setSourceSupplier]=useState<string|null>(null);const [ready,setReady]=useState(false);
- const brief=workspace.briefs[0]??initial.briefs[0];
- const live=operator&&authenticated;
- const sampleComparison=useMemo(()=>compareEvidence(brief,workspace.quotes,workspace.evidence,{memories:useMemory?workspace.memories:[],status:'complete',missingActiveIds:[]},new Date().toISOString()),[brief,workspace.quotes,workspace.evidence,workspace.memories,useMemory]);
- const comparison=live?liveComparison:sampleComparison;
- const recommended=workspace.suppliers.find(s=>s.id===comparison?.rankedSupplierIds[0]);
- const activeMemories=workspace.memories.filter(m=>!workspace.memories.some(c=>c.supersedesId===m.id));
- const selectedSuppliers=workspace.suppliers.filter(s=>s.name.toLowerCase().includes(search.toLowerCase()));
+export default function Workbench({
+  initial,
+  operator = false,
+  liveConfigured = false,
+}: {
+  initial: WorkspaceSnapshot;
+  operator?: boolean;
+  liveConfigured?: boolean;
+}) {
+  const [workspace, setWorkspace] = useState(initial);
+  const [view, setView] = useState<View>('overview');
+  const [dialog, setDialog] = useState<Dialog>(null);
+  const [useMemory, setUseMemory] = useState(true);
+  const [search, setSearch] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
+  const [authenticated, setAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [liveComparison, setLiveComparison] = useState<Comparison | null>(null);
+  const [draft, setDraft] = useState<CitedDraft | null>(null);
+  const [sourceSupplier, setSourceSupplier] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+  const brief = workspace.briefs[0] ?? initial.briefs[0];
+  const live = operator && authenticated;
+  const sampleComparison = useMemo(
+    () =>
+      compareEvidence(
+        brief,
+        workspace.quotes,
+        workspace.evidence,
+        { memories: useMemory ? workspace.memories : [], status: 'complete', missingActiveIds: [] },
+        new Date().toISOString(),
+      ),
+    [brief, workspace.quotes, workspace.evidence, workspace.memories, useMemory],
+  );
+  const comparison = live ? liveComparison : sampleComparison;
+  const recommended = workspace.suppliers.find((s) => s.id === comparison?.rankedSupplierIds[0]);
+  const activeMemories = workspace.memories.filter(
+    (m) => !workspace.memories.some((c) => c.supersedesId === m.id),
+  );
+  const selectedSuppliers = workspace.suppliers.filter((s) =>
+    s.name.toLowerCase().includes(search.toLowerCase()),
+  );
 
- async function refresh(recompare=true){const next=await api<WorkspaceSnapshot>('workspace');setWorkspace(next);if(recompare&&next.briefs.length)setLiveComparison(await api<Comparison>('compare',{briefId:next.briefs[0].id}));}
- useEffect(()=>{
-  let mounted=true;
-  async function load(){if(operator){try{const next=await api<WorkspaceSnapshot>('workspace');if(mounted){setWorkspace(next);setAuthenticated(true);if(next.briefs.length){const result=await api<Comparison>('compare',{briefId:next.briefs[0].id});if(mounted)setLiveComparison(result);}}}catch{/* An unsigned operator sees the login form. */}}else{const saved=readSample();if(saved&&mounted)setWorkspace(saved);}if(mounted)setReady(true);}
-  void load();return()=>{mounted=false;};
- },[operator]);
- function saveSample(next:WorkspaceSnapshot){writeSample(next);setWorkspace(next);}
- async function run(action:()=>Promise<void>){setBusy(true);setError('');try{await action();}catch(e){setError(e instanceof Error?e.message:'Something went wrong. Please try again.');}finally{setBusy(false);}}
- async function saveBrief(next:Brief){if(live){await api('briefs',next);await refresh();}else saveSample({...workspace,briefs:[next,...workspace.briefs.slice(1)]});setNotice('Sourcing brief updated.');}
- async function saveQuote(quote:Quote,supplier:Supplier,source:string){
-  if(live){await api('suppliers',supplier);await api('quotes/confirm',{quote,supplierId:supplier.id,sourceText:source});await refresh();}
-  else{const evidenceId=`source-${quote.id}`;saveSample({...workspace,suppliers:[...workspace.suppliers.filter(s=>s.id!==supplier.id),supplier],quotes:[...workspace.quotes,{...quote,evidenceIds:[evidenceId]}],evidence:[...workspace.evidence,{id:evidenceId,supplierId:supplier.id,kind:'quote',source:'User-confirmed sample quote',retrievedAt:new Date().toISOString(),excerpt:source,fictional:true}]});}setNotice('Quote confirmed. Comparison updated.');
- }
- async function saveEvent(event:OrderEvent){if(live){await api('orders/events',event);try{await refresh(false);}catch{setNotice('Observation saved; workspace refresh failed. Reload to see it.');return;}}else saveSample(applySampleEvent(workspace,event));setNotice(live?'Observation recorded. Memory is queued for Mainnet storage.':'Lesson saved in this browser. The next comparison will use it.');}
- function research(){setDialog('research');if(live)void run(async()=>{await api('research',{briefId:brief.id});await refresh(false);});}
- function prepareDraft(){setDialog('draft');setDraft(null);void run(async()=>{if(!comparison||!recommended)throw Error('Compare a confirmed quote first.');setDraft(live?await api<CitedDraft>('drafts',{briefId:brief.id,supplierId:recommended.id}):templateDraft({comparison,supplierName:recommended.name,commitments:[]}));});}
- async function checkPayment(invoice:Invoice,digest:string){await api('invoices',invoice);const result=await api<PaymentCheck>('payments/verify',{invoiceId:invoice.id,digest});await refresh(false);return `${result.status==='verified'?'Payment verified':'Payment unverified'} — ${result.reason}`;}
- function inspectSources(supplierId:string){setSourceSupplier(supplierId);setDialog('sources');}
+  async function refresh(recompare = true) {
+    const next = await api<WorkspaceSnapshot>('workspace');
+    setWorkspace(next);
+    if (recompare && next.briefs.length)
+      setLiveComparison(await api<Comparison>('compare', { briefId: next.briefs[0].id }));
+  }
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      if (operator) {
+        try {
+          const next = await api<WorkspaceSnapshot>('workspace');
+          if (mounted) {
+            setWorkspace(next);
+            setAuthenticated(true);
+            if (next.briefs.length) {
+              const result = await api<Comparison>('compare', { briefId: next.briefs[0].id });
+              if (mounted) setLiveComparison(result);
+            }
+          }
+        } catch {
+          /* An unsigned operator sees the login form. */
+        }
+      } else {
+        const saved = readSample();
+        if (saved && mounted) setWorkspace(saved);
+      }
+      if (mounted) setReady(true);
+    }
+    void load();
+    return () => {
+      mounted = false;
+    };
+  }, [operator]);
+  function saveSample(next: WorkspaceSnapshot) {
+    writeSample(next);
+    setWorkspace(next);
+  }
+  async function run(action: () => Promise<void>) {
+    setBusy(true);
+    setError('');
+    try {
+      await action();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function saveBrief(next: Brief) {
+    if (live) {
+      await api('briefs', next);
+      await refresh();
+    } else saveSample({ ...workspace, briefs: [next, ...workspace.briefs.slice(1)] });
+    setNotice('Sourcing brief updated.');
+  }
+  async function saveQuote(quote: Quote, supplier: Supplier, source: string) {
+    if (live) {
+      await api('suppliers', supplier);
+      await api('quotes/confirm', { quote, supplierId: supplier.id, sourceText: source });
+      await refresh();
+    } else {
+      const evidenceId = `source-${quote.id}`;
+      saveSample({
+        ...workspace,
+        suppliers: [...workspace.suppliers.filter((s) => s.id !== supplier.id), supplier],
+        quotes: [...workspace.quotes, { ...quote, evidenceIds: [evidenceId] }],
+        evidence: [
+          ...workspace.evidence,
+          {
+            id: evidenceId,
+            supplierId: supplier.id,
+            kind: 'quote',
+            source: 'User-confirmed sample quote',
+            retrievedAt: new Date().toISOString(),
+            excerpt: source,
+            fictional: true,
+          },
+        ],
+      });
+    }
+    setNotice('Quote confirmed. Comparison updated.');
+  }
+  async function saveEvent(event: OrderEvent) {
+    if (live) {
+      await api('orders/events', event);
+      try {
+        await refresh(false);
+      } catch {
+        setNotice('Observation saved; workspace refresh failed. Reload to see it.');
+        return;
+      }
+    } else saveSample(applySampleEvent(workspace, event));
+    setNotice(
+      live
+        ? 'Observation recorded. Memory is queued for Mainnet storage.'
+        : 'Lesson saved in this browser. The next comparison will use it.',
+    );
+  }
+  function research() {
+    setDialog('research');
+    if (live)
+      void run(async () => {
+        await api('research', { briefId: brief.id });
+        await refresh(false);
+      });
+  }
+  function prepareDraft() {
+    setDialog('draft');
+    setDraft(null);
+    void run(async () => {
+      if (!comparison || !recommended) throw Error('Compare a confirmed quote first.');
+      setDraft(
+        live
+          ? await api<CitedDraft>('drafts', { briefId: brief.id, supplierId: recommended.id })
+          : templateDraft({ comparison, supplierName: recommended.name, commitments: [] }),
+      );
+    });
+  }
+  async function checkPayment(invoice: Invoice, digest: string) {
+    await api('invoices', invoice);
+    const result = await api<PaymentCheck>('payments/verify', { invoiceId: invoice.id, digest });
+    await refresh(false);
+    return `${result.status === 'verified' ? 'Payment verified' : 'Payment unverified'} — ${result.reason}`;
+  }
+  function inspectSources(supplierId: string) {
+    setSourceSupplier(supplierId);
+    setDialog('sources');
+  }
 
- if(operator&&!authenticated)return <main className="login-page"><Link className="brand" href="/"><span className="brand-icon"><Package size={21}/></span>supplier<span className="brand-light">recall</span></Link><div className="login-panel"><span className="eyebrow">YOUR LIVE WORKSPACE</span><h1>Welcome back.</h1><p>Sign in to research live suppliers and store lessons with Walrus Memory.</p>{!liveConfigured&&<div className="notice">Live mode needs local credentials. Follow <code>.env.example</code> and the setup guide, then restart the app. The sample workspace is ready to explore.</div>}<form onSubmit={e=>{e.preventDefault();void run(async()=>{await api('session',{password});setPassword('');setAuthenticated(true);await refresh();});}}><label>Operator password<input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required/></label><button className="button primary full" disabled={busy||!liveConfigured}>{busy?'Signing in…':'Open workspace'}<ArrowRight size={16}/></button></form>{error&&<p className="form-error" role="alert">{error}</p>}<Link href="/" className="text-button"><ArrowLeft size={14}/> Explore the sample workspace</Link></div><small>Private operator access · No wallet connection required</small></main>;
+  if (operator && !authenticated)
+    return (
+      <main className="login-page">
+        <Link className="brand" href="/">
+          <span className="brand-icon">
+            <Package size={21} />
+          </span>
+          supplier<span className="brand-light">recall</span>
+        </Link>
+        <div className="login-panel">
+          <span className="eyebrow">YOUR LIVE WORKSPACE</span>
+          <h1>Welcome back.</h1>
+          <p>Sign in to research live suppliers and store lessons with Walrus Memory.</p>
+          {!liveConfigured && (
+            <div className="notice">
+              Live mode needs local credentials. Follow <code>.env.example</code> and the setup
+              guide, then restart the app. The sample workspace is ready to explore.
+            </div>
+          )}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void run(async () => {
+                await api('session', { password });
+                setPassword('');
+                setAuthenticated(true);
+                await refresh();
+              });
+            }}
+          >
+            <label>
+              Operator password
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </label>
+            <button className="button primary full" disabled={busy || !liveConfigured}>
+              {busy ? 'Signing in…' : 'Open workspace'}
+              <ArrowRight size={16} />
+            </button>
+          </form>
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
+          <Link href="/" className="text-button">
+            <ArrowLeft size={14} /> Explore the sample workspace
+          </Link>
+        </div>
+        <small>Private operator access · No wallet connection required</small>
+      </main>
+    );
 
- return <div className="app-shell">
- <aside className="sidebar"><Link href="/" className="brand"><span className="brand-icon"><Package size={20}/></span>supplier<span className="brand-light">recall</span><span className="beta">BETA</span></Link>
- <div className="workspace-switch"><span className="workspace-avatar">F</span><span><strong>Fieldwork Studio</strong><small>{live?'Operator workspace':'Sample workspace'}</small></span><ChevronRight size={15}/></div>
- <span className="nav-label">WORKSPACE</span><nav aria-label="Main navigation">{([{id:'overview',label:'Overview',icon:LayoutGrid},{id:'suppliers',label:'Suppliers',icon:Package},{id:'memory',label:'Memory',icon:Brain},{id:'orders',label:'Order timeline',icon:History}] as const).map(item=><button key={item.id} aria-label={item.label} className={`nav-item ${view===item.id?'active':''}`} onClick={()=>setView(item.id)}><item.icon size={18}/><span>{item.label}</span>{item.id==='memory'&&<span className="nav-count">{activeMemories.length}</span>}</button>)}</nav>
- <div className="sidebar-lesson"><div className="mini-orbit"><Brain size={20}/></div><strong>Every order teaches you something.</strong><p>Keep the lesson. Make the next decision better.</p><button className="text-button" onClick={()=>setDialog('event')}>Add an observation <ArrowUpRight size={14}/></button></div>
- <div className="sidebar-bottom"><button className="nav-item" aria-label="Payment evidence" onClick={()=>setDialog('payment')}><ShieldCheck size={18}/><span>Payment evidence</span></button>{!live&&<a className="nav-item" href="/live"><Brain size={18}/>Live Mainnet proof<ArrowUpRight size={14}/></a>}{live?<button className="nav-item" onClick={()=>void run(async()=>{await api('session',undefined,'DELETE');setAuthenticated(false);})}><LogOut size={18}/>Sign out</button>:<a className="nav-item" href="/operator"><Settings2 size={18}/>Operator access<ArrowUpRight size={14}/></a>}<div className="profile"><span className="profile-avatar">FW</span><span><strong>Fieldwork Studio</strong><small>Small business, long memory.</small></span></div></div></aside>
- <div className="main-shell"><header className="topbar"><div className="breadcrumb">Workspace<ChevronRight size={13}/><span>{view==='overview'?'Overview':view==='suppliers'?'Suppliers':view==='memory'?'Memory':'Order timeline'}</span></div><div className="topbar-right"><span className={`mode-badge ${live?'live':''}`}><span/>{live?'Live operator':'Sample data'}</span><span className="topbar-divider"/><span className="profile-avatar small-avatar">FW</span></div></header>
- <main className="main-content"><section className="page-heading"><div><div className="eyebrow"><span className="tiny-dot"/> BETTER DECISIONS, EVERY ORDER</div><h1>{view==='overview'?'Your sourcing desk':view==='suppliers'?'Your supplier shortlist':view==='memory'?'Experience, remembered.':'The story of every order.'}</h1><p>{view==='overview'?'Find the right supplier. Bring everything you’ve learned.':view==='suppliers'?'Compare the promises with the evidence behind them.':view==='memory'?'The observations and preferences shaping your next decision.':'Record the commitment, the outcome, and what comes next.'}</p></div><button className="button primary" onClick={()=>setDialog(view==='memory'?'event':'brief')}><Plus size={17}/>{view==='memory'?'Add observation':'Edit sourcing brief'}</button></section>
- {(notice||error)&&<div className={`feedback ${error?'error':''}`} role={error?'alert':'status'}>{error?<AlertCircle size={16}/>:<CheckCircle2 size={16}/>}<span>{error||notice}</span><button className="text-button" onClick={()=>{setError('');setNotice('');}}>Dismiss</button></div>}
- {live&&workspace.briefs.length===0?<div className="empty-state"><Package size={36}/><h2>Start with a working example</h2><p>Load the fictional packaging scenario. Memories are queued locally until you submit them to Walrus.</p><button className="button primary" disabled={busy} onClick={()=>void run(async()=>{await api('demo/seed',{});await refresh(false);})}>Load demo workspace</button></div>:<>
- {(view==='overview'||view==='suppliers')&&<><section className="brief-panel"><div className="brief-top"><div className="project-icon"><Package size={25}/></div><div className="brief-title"><div className="inline-labels"><span className="eyebrow">ACTIVE SOURCING BRIEF</span><span className="status-badge">In progress</span></div><h2>{brief.title}</h2><p>{brief.specification}</p></div><button className="icon-button" aria-label="Edit brief" onClick={()=>setDialog('brief')}><SlidersHorizontal size={18}/></button></div><div className="brief-facts"><div><span>QUANTITY</span><strong>{brief.quantity.toLocaleString()} <small>units</small></strong></div><div><span>BUDGET</span><strong>{money(brief.budgetCents)}</strong></div><div><span>NEEDED BY</span><strong>{shortDate(brief.neededBy)}</strong></div><div><span>DELIVER TO</span><strong>{brief.destination.replace(', US','')}</strong></div><label className="purpose-field">PURCHASE PURPOSE<select aria-label="Purchase purpose" value={brief.purpose} onChange={e=>void run(()=>saveBrief({...brief,purpose:e.target.value as Brief['purpose']}))}><option value="launch">Product launch</option><option value="restock">Routine restock</option></select></label></div></section>
- <div className="desk-grid"><div className="desk-main"><section className="comparison-section"><div className="section-heading"><div><h2>Compare your options <span className="count-badge">{workspace.suppliers.length}</span></h2><p>Quotes tell one story. Experience tells the rest.</p></div><div className="actions"><button className="button secondary small" onClick={research}><Search size={15}/>Research suppliers</button><button className="button primary small" onClick={()=>setDialog('quote')}><Plus size={15}/>Add quote</button></div></div>
- <div className="table-toolbar"><label className="search-input"><Search size={15}/><input aria-label="Find a supplier" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Find a supplier…"/></label><label className="memory-toggle"><input type="checkbox" aria-label="Use remembered experience" checked={useMemory} disabled={live} onChange={e=>setUseMemory(e.target.checked)}/><span className="toggle-track"/><Brain size={14}/><span>Use memory</span></label></div>
- <div className="table-scroll"><table className="supplier-table"><thead><tr><th>SUPPLIER</th><th>QUOTED TOTAL</th><th>DELIVERY</th><th>WHAT WE REMEMBER</th><th><span className="sr-only">Sources</span></th></tr></thead><tbody>{selectedSuppliers.map((supplier,index)=>{const candidate=comparison?.candidates.find(c=>c.supplierId===supplier.id);const best=recommended?.id===supplier.id;const quote=workspace.quotes.filter(q=>q.supplierId===supplier.id&&q.briefId===brief.id).sort((a,b)=>(b.confirmedAt??'').localeCompare(a.confirmedAt??''))[0];return <tr key={supplier.id} className={best?'recommended-row':''}><td><div className="supplier-cell"><span className={`supplier-mark mark-${index%3}`}>{supplier.name.split(' ').slice(0,2).map(n=>n[0]).join('')}</span><div><button className="supplier-name" onClick={()=>inspectSources(supplier.id)}>{supplier.name}</button><small>{supplier.location}</small>{best&&<span className="recommended-label"><Check size={11}/>Recommended</span>}</div></div></td><td><strong className="numeric">{candidate?money(candidate.totalCents):'Needs quote'}</strong><small>{quote?.unitPriceCents!==null&&quote?.unitPriceCents!==undefined?`${money(quote.unitPriceCents)} / unit`:'Request pricing'}</small></td><td><span>{candidate?.arrival?shortDate(candidate.arrival):'Unconfirmed'}</span><small>{quote&&quote.productionDays!==null&&quote.transitDays!==null?`${quote.productionDays+quote.transitDays} ${quote.deliveryDaysKind} days`:'Ask the supplier'}</small></td><td>{candidate?.observationCount?<><span className={`history-pill ${candidate.lateCount?'warning':'positive'}`}>{candidate.lateCount?<Clock size={12}/>:<CheckCircle2 size={12}/>} {candidate.lateCount?`${candidate.lateCount} late deliveries`:'On-time delivery'}</span><small>{candidate.observationCount} recorded {candidate.observationCount===1?'order':'orders'}</small></>:<><span className="history-pill neutral">No history yet</span><small>Keep learning</small></>}</td><td><button className="icon-button" aria-label={`View ${supplier.name} evidence`} onClick={()=>inspectSources(supplier.id)}><ChevronRight size={16}/></button></td></tr>;})}</tbody></table></div>
- <div className="table-foot"><span><Link2 size={13}/>All recommendations link back to their evidence.</span><span>{live?'Live workspace':'Fictional suppliers · USD'}</span></div></section>
- <section className="recommendation" data-testid="recommendation"><div className="recommendation-icon"><Brain size={24}/></div><div className="recommendation-content"><div className="inline-labels"><span className="eyebrow">{useMemory?'INFORMED BY YOUR EXPERIENCE':'QUOTE-ONLY COMPARISON'}</span><span className="status-badge">{comparison?.status==='ready'?'Ready to review':comparison?.status==='blocked'?'Needs more information':'Provisional'}</span></div><h2>{recommended?`${recommended.name} is worth a closer look.`:'Confirm your quotes to build a recommendation.'}</h2><p>{comparison?.reasons.find(r=>r.memoryIds.length&&r.text.includes('late deliveries'))?.text??(recommended?'The comparison weighs your requirements, known costs, and available delivery evidence.':'Research a supplier, review its identity, and attach a confirmed quote.')}</p>{comparison?.reasons.filter(r=>r.text.startsWith('Your ')).map(r=><p className="preference-reason" key={r.text}>{r.text}</p>)}{comparison?.status==='provisional'&&<p className="warning-text">Some evidence is incomplete. Review the open questions before deciding.</p>}<div className="recommendation-footer"><span>{comparison?.recalledMemoryIds.length??0} memories considered <span>·</span> {comparison?.candidates.length??0} quotes reviewed</span><button className="button primary small" disabled={!recommended||busy} onClick={prepareDraft}>Draft follow-up<ArrowUpRight size={14}/></button></div></div></section>
- <div className="next-step-row"><div><span className="round-icon"><History size={18}/></span><div><strong>Close the loop.</strong><p>Record the outcome so your next order starts smarter.</p></div></div><button className="text-button" onClick={()=>setDialog('event')}>Record an outcome <ArrowRight size={15}/></button></div>
- </div><aside className="memory-panel"><div className="memory-heading"><div><Brain size={18}/><h2>Your working memory</h2></div><span className="count-badge">{activeMemories.length}</span></div><p className="muted">A little context makes a better decision.</p><div className="memory-timeline">{activeMemories.filter(m=>!m.purpose||m.purpose===brief.purpose).slice().sort((a,b)=>b.occurredAt.localeCompare(a.occurredAt)).slice(0,4).map(m=><div className="timeline-item" key={m.id}><span className={`timeline-dot ${m.kind==='outcome'?'amber':''}`}/><div className="timeline-meta"><span>{m.kind}</span><time>{shortDate(m.occurredAt)}</time></div><p>{m.text}</p><span className="memory-origin">{live?workspace.memoryWrites.find(j=>j.recordId===m.id)?.state??'pending':'Sample memory'}</span></div>)}</div><button className="button secondary full" onClick={()=>setView('memory')}>View all memories<ArrowRight size={15}/></button><div className="teach-panel"><Leaf size={19}/><strong>You know your business best.</strong><p>Tell Recall what matters. It will remember for next time.</p><button className="text-button" onClick={()=>setDialog('preference')}>Teach a preference <Plus size={14}/></button></div></aside></div></>}
- {view==='memory'&&<section className="records-section"><div className="section-heading"><div><h2>{activeMemories.length} active memories</h2><p>{live?'Queued records only influence decisions after they can be recalled from Walrus.':'Sample memories persist in this browser. They are not Mainnet writes.'}</p></div><button className="button primary small" onClick={()=>setDialog('preference')}>Teach a preference<Plus size={15}/></button></div><div className="memory-records">{workspace.memories.slice().sort((a,b)=>b.occurredAt.localeCompare(a.occurredAt)).map(m=>{const replaced=workspace.memories.some(c=>c.supersedesId===m.id);const job=workspace.memoryWrites.find(j=>j.recordId===m.id);return <article key={m.id} className={replaced?'superseded':''}><span className="record-icon"><Brain size={17}/></span><div><div className="inline-labels"><span className="eyebrow">{m.kind}{m.purpose?` · ${m.purpose}`:''}</span><span className="status-badge">{replaced?'Superseded':live?job?.state??'pending':'Sample memory'}</span></div><p>{m.text}</p><small>{shortDate(m.occurredAt)} · {workspace.suppliers.find(s=>s.id===m.supplierId)?.name??'Your preferences'} · {m.id}</small>{job?.errorCode&&<p className="warning-text">{job.errorCode.replaceAll('_',' ')}. The write has not been confirmed.</p>}{live&&job?.receipt&&<small>Storage receipt: {String(job.receipt.blobId??job.receipt.jobId??'confirmed')}</small>}</div>{live&&job?.state!=='saved'&&<button className="button secondary small" disabled={busy} onClick={()=>void run(async()=>{await api(`memories/${m.id}/status`,{});await refresh(false);})}><RefreshCw size={14}/>Check storage</button>}</article>;})}</div>{live&&<button className="button primary" disabled={busy} onClick={()=>void run(()=>refresh())}>Re-evaluate with recalled memory</button>}</section>}
- {view==='orders'&&<section className="records-section"><div className="section-heading"><div><h2>Commitments & outcomes</h2><p>Real observations inform the next recommendation.</p></div><button className="button primary small" onClick={()=>setDialog('event')}><Plus size={15}/>Record an outcome</button></div>{workspace.orderEvents.length===0?<div className="empty-state"><History size={30}/><h3>The next chapter starts here.</h3><p>Record a supplier commitment, delivery, or quality issue.</p><button className="button secondary" onClick={()=>setDialog('event')}>Add your first observation</button></div>:workspace.orderEvents.slice().reverse().map(e=><article className="order-record" key={e.id}><span className="record-icon"><Package size={18}/></span><div><span className="eyebrow">{e.kind} · {shortDate(e.occurredAt)}</span><h3>{workspace.suppliers.find(s=>s.id===e.supplierId)?.name}</h3><p>{e.text}</p>{e.kind==='delivery'&&<small>Promised {e.promisedDays} days · Actual {e.actualDays} days</small>}</div></article>)}<div className="payment-callout"><ShieldCheck size={22}/><div><strong>Keep payment evidence separate.</strong><p>A confirmed payment is useful context. It does not prove delivery.</p></div><button className="button secondary small" onClick={()=>setDialog('payment')}>Check a payment<ArrowUpRight size={14}/></button></div>{workspace.paymentChecks.map((p,i)=><p className="notice" key={i}>{p.status==='verified'?'Payment verified':'Payment unverified'}: {p.reason}</p>)}</section>}
- </>}
- <footer className="workspace-footer"><span><span className="tiny-dot"/>{live?'Walrus Memory + Tatum integration':'A hands-on preview. No live services are called.'}</span>{!live&&<button className="text-button" onClick={()=>setDialog('reset')}><RefreshCw size={12}/>Reset sample</button>}{!live&&<Link className="text-button" href="/live">See the live Mainnet proof<ArrowUpRight size={12}/></Link>}<span>Built to remember.</span></footer>
- </main></div>
- {dialog==='brief'&&<BriefDialog brief={brief} onSave={saveBrief} onClose={()=>setDialog(null)}/>}
- {dialog==='quote'&&<QuoteDialog workspace={workspace} brief={brief} live={live} onSave={saveQuote} onClose={()=>setDialog(null)}/>}
- {dialog==='preference'&&<PreferenceDialog workspace={workspace} brief={brief} live={live} onSave={saveEvent} onClose={()=>setDialog(null)}/>}
- {dialog==='event'&&<EventDialog workspace={workspace} brief={brief} live={live} onSave={saveEvent} onClose={()=>setDialog(null)}/>}
- {dialog==='research'&&<ResearchDialog live={live} suppliers={workspace.suppliers.filter(s=>live?!s.fictional:true)} evidence={workspace.evidence} busy={busy} error={error} onClose={()=>setDialog(null)}/>}
- {dialog==='draft'&&<DraftDialog draft={draft} busy={busy} onClose={()=>setDialog(null)}/>}
- {dialog==='payment'&&<PaymentDialog live={live} workspace={workspace} onVerify={checkPayment} onClose={()=>setDialog(null)}/>}
- {dialog==='sources'&&<Modal title="Evidence behind the decision" eyebrow={workspace.suppliers.find(s=>s.id===sourceSupplier)?.name} onClose={()=>setDialog(null)}>{workspace.evidence.filter(e=>e.supplierId===sourceSupplier).map(e=><article className="source-record" key={e.id}><span className="eyebrow">{e.kind.replace('_',' ')} · {shortDate(e.retrievedAt)}</span><p>{e.excerpt}</p>{e.source.startsWith('https://')?<a href={e.source} target="_blank" rel="noreferrer" className="source-link">Open original source <ExternalLink size={13}/></a>:<small>{e.source}</small>}</article>)}{comparison?.excluded.find(c=>c.supplierId===sourceSupplier)?.reasons.map(reason=><p className="form-error" key={reason}>{reason}</p>)}{comparison?.candidates.find(c=>c.supplierId===sourceSupplier)?.questions.map(question=><p className="notice" key={question}>{question}</p>)}{comparison?.candidates.find(c=>c.supplierId===sourceSupplier)?.reasons.map((r,i)=><div className="inset" key={i}><p>{r.text}</p><small>{r.memoryIds.length?`Memory references: ${r.memoryIds.join(', ')}`:r.evidenceIds.length?`Source references: ${r.evidenceIds.join(', ')}`:'No recorded evidence for this point.'}</small></div>)}</Modal>}
- {dialog==='reset'&&<Modal title="Start the sample again?" onClose={()=>setDialog(null)}><p>This replaces only the fictional workspace saved in this browser. Your operator workspace is separate.</p><div className="modal-actions"><button className="button secondary" onClick={()=>setDialog(null)}>Keep my sample</button><button className="button primary" onClick={()=>{saveSample(createSampleWorkspace());setUseMemory(true);setDialog(null);setView('overview');setNotice('Sample workspace reset.');}}>Reset sample workspace</button></div></Modal>}
- {!ready&&<span className="sr-only" role="status">Loading saved workspace…</span>}
- </div>;
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <Link href="/" className="brand">
+          <span className="brand-icon">
+            <Package size={20} />
+          </span>
+          supplier<span className="brand-light">recall</span>
+          <span className="beta">BETA</span>
+        </Link>
+        <div className="workspace-switch">
+          <span className="workspace-avatar">F</span>
+          <span>
+            <strong>Fieldwork Studio</strong>
+            <small>{live ? 'Operator workspace' : 'Sample workspace'}</small>
+          </span>
+          <ChevronRight size={15} />
+        </div>
+        <span className="nav-label">WORKSPACE</span>
+        <nav aria-label="Main navigation">
+          {(
+            [
+              { id: 'overview', label: 'Overview', icon: LayoutGrid },
+              { id: 'suppliers', label: 'Suppliers', icon: Package },
+              { id: 'memory', label: 'Memory', icon: Brain },
+              { id: 'orders', label: 'Order timeline', icon: History },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.id}
+              aria-label={item.label}
+              className={`nav-item ${view === item.id ? 'active' : ''}`}
+              onClick={() => setView(item.id)}
+            >
+              <item.icon size={18} />
+              <span>{item.label}</span>
+              {item.id === 'memory' && <span className="nav-count">{activeMemories.length}</span>}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-lesson">
+          <div className="mini-orbit">
+            <Brain size={20} />
+          </div>
+          <strong>Every order teaches you something.</strong>
+          <p>Keep the lesson. Make the next decision better.</p>
+          <button className="text-button" onClick={() => setDialog('event')}>
+            Add an observation <ArrowUpRight size={14} />
+          </button>
+        </div>
+        <div className="sidebar-bottom">
+          <button
+            className="nav-item"
+            aria-label="Payment evidence"
+            onClick={() => setDialog('payment')}
+          >
+            <ShieldCheck size={18} />
+            <span>Payment evidence</span>
+          </button>
+          {!live && (
+            <a className="nav-item" href="/live">
+              <Brain size={18} />
+              Live Mainnet proof
+              <ArrowUpRight size={14} />
+            </a>
+          )}
+          {live ? (
+            <button
+              className="nav-item"
+              onClick={() =>
+                void run(async () => {
+                  await api('session', undefined, 'DELETE');
+                  setAuthenticated(false);
+                })
+              }
+            >
+              <LogOut size={18} />
+              Sign out
+            </button>
+          ) : (
+            <a className="nav-item" href="/operator">
+              <Settings2 size={18} />
+              Operator access
+              <ArrowUpRight size={14} />
+            </a>
+          )}
+          <div className="profile">
+            <span className="profile-avatar">FW</span>
+            <span>
+              <strong>Fieldwork Studio</strong>
+              <small>Small business, long memory.</small>
+            </span>
+          </div>
+        </div>
+      </aside>
+      <div className="main-shell">
+        <header className="topbar">
+          <div className="breadcrumb">
+            Workspace
+            <ChevronRight size={13} />
+            <span>
+              {view === 'overview'
+                ? 'Overview'
+                : view === 'suppliers'
+                  ? 'Suppliers'
+                  : view === 'memory'
+                    ? 'Memory'
+                    : 'Order timeline'}
+            </span>
+          </div>
+          <div className="topbar-right">
+            <span className={`mode-badge ${live ? 'live' : ''}`}>
+              <span />
+              {live ? 'Live operator' : 'Sample data'}
+            </span>
+            <span className="topbar-divider" />
+            <span className="profile-avatar small-avatar">FW</span>
+          </div>
+        </header>
+        <main className="main-content">
+          <section className="page-heading">
+            <div>
+              <div className="eyebrow">
+                <span className="tiny-dot" /> BETTER DECISIONS, EVERY ORDER
+              </div>
+              <h1>
+                {view === 'overview'
+                  ? 'Your sourcing desk'
+                  : view === 'suppliers'
+                    ? 'Your supplier shortlist'
+                    : view === 'memory'
+                      ? 'Experience, remembered.'
+                      : 'The story of every order.'}
+              </h1>
+              <p>
+                {view === 'overview'
+                  ? 'Find the right supplier. Bring everything you’ve learned.'
+                  : view === 'suppliers'
+                    ? 'Compare the promises with the evidence behind them.'
+                    : view === 'memory'
+                      ? 'The observations and preferences shaping your next decision.'
+                      : 'Record the commitment, the outcome, and what comes next.'}
+              </p>
+            </div>
+            <button
+              className="button primary"
+              onClick={() => setDialog(view === 'memory' ? 'event' : 'brief')}
+            >
+              <Plus size={17} />
+              {view === 'memory' ? 'Add observation' : 'Edit sourcing brief'}
+            </button>
+          </section>
+          {(notice || error) && (
+            <div className={`feedback ${error ? 'error' : ''}`} role={error ? 'alert' : 'status'}>
+              {error ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+              <span>{error || notice}</span>
+              <button
+                className="text-button"
+                onClick={() => {
+                  setError('');
+                  setNotice('');
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+          {live && workspace.briefs.length === 0 ? (
+            <div className="empty-state">
+              <Package size={36} />
+              <h2>Start with a working example</h2>
+              <p>
+                Load the fictional packaging scenario. Memories are queued locally until you submit
+                them to Walrus.
+              </p>
+              <button
+                className="button primary"
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    await api('demo/seed', {});
+                    await refresh(false);
+                  })
+                }
+              >
+                Load demo workspace
+              </button>
+            </div>
+          ) : (
+            <>
+              {(view === 'overview' || view === 'suppliers') && (
+                <>
+                  <section className="brief-panel">
+                    <div className="brief-top">
+                      <div className="project-icon">
+                        <Package size={25} />
+                      </div>
+                      <div className="brief-title">
+                        <div className="inline-labels">
+                          <span className="eyebrow">ACTIVE SOURCING BRIEF</span>
+                          <span className="status-badge">In progress</span>
+                        </div>
+                        <h2>{brief.title}</h2>
+                        <p>{brief.specification}</p>
+                      </div>
+                      <button
+                        className="icon-button"
+                        aria-label="Edit brief"
+                        onClick={() => setDialog('brief')}
+                      >
+                        <SlidersHorizontal size={18} />
+                      </button>
+                    </div>
+                    <div className="brief-facts">
+                      <div>
+                        <span>QUANTITY</span>
+                        <strong>
+                          {brief.quantity.toLocaleString()} <small>units</small>
+                        </strong>
+                      </div>
+                      <div>
+                        <span>BUDGET</span>
+                        <strong>{money(brief.budgetCents)}</strong>
+                      </div>
+                      <div>
+                        <span>NEEDED BY</span>
+                        <strong>{shortDate(brief.neededBy)}</strong>
+                      </div>
+                      <div>
+                        <span>DELIVER TO</span>
+                        <strong>{brief.destination.replace(', US', '')}</strong>
+                      </div>
+                      <label className="purpose-field">
+                        PURCHASE PURPOSE
+                        <select
+                          aria-label="Purchase purpose"
+                          value={brief.purpose}
+                          onChange={(e) =>
+                            void run(() =>
+                              saveBrief({ ...brief, purpose: e.target.value as Brief['purpose'] }),
+                            )
+                          }
+                        >
+                          <option value="launch">Product launch</option>
+                          <option value="restock">Routine restock</option>
+                        </select>
+                      </label>
+                    </div>
+                  </section>
+                  <div className="desk-grid">
+                    <div className="desk-main">
+                      <section className="comparison-section">
+                        <div className="section-heading">
+                          <div>
+                            <h2>
+                              Compare your options{' '}
+                              <span className="count-badge">{workspace.suppliers.length}</span>
+                            </h2>
+                            <p>Quotes tell one story. Experience tells the rest.</p>
+                          </div>
+                          <div className="actions">
+                            <button className="button secondary small" onClick={research}>
+                              <Search size={15} />
+                              Research suppliers
+                            </button>
+                            <button
+                              className="button primary small"
+                              onClick={() => setDialog('quote')}
+                            >
+                              <Plus size={15} />
+                              Add quote
+                            </button>
+                          </div>
+                        </div>
+                        <div className="table-toolbar">
+                          <label className="search-input">
+                            <Search size={15} />
+                            <input
+                              aria-label="Find a supplier"
+                              value={search}
+                              onChange={(e) => setSearch(e.target.value)}
+                              placeholder="Find a supplier…"
+                            />
+                          </label>
+                          <label className="memory-toggle">
+                            <input
+                              type="checkbox"
+                              aria-label="Use remembered experience"
+                              checked={useMemory}
+                              disabled={live}
+                              onChange={(e) => setUseMemory(e.target.checked)}
+                            />
+                            <span className="toggle-track" />
+                            <Brain size={14} />
+                            <span>Use memory</span>
+                          </label>
+                        </div>
+                        <div className="table-scroll">
+                          <table className="supplier-table">
+                            <thead>
+                              <tr>
+                                <th>SUPPLIER</th>
+                                <th>QUOTED TOTAL</th>
+                                <th>DELIVERY</th>
+                                <th>WHAT WE REMEMBER</th>
+                                <th>
+                                  <span className="sr-only">Sources</span>
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedSuppliers.map((supplier, index) => {
+                                const candidate = comparison?.candidates.find(
+                                  (c) => c.supplierId === supplier.id,
+                                );
+                                const best = recommended?.id === supplier.id;
+                                const quote = workspace.quotes
+                                  .filter(
+                                    (q) => q.supplierId === supplier.id && q.briefId === brief.id,
+                                  )
+                                  .sort((a, b) =>
+                                    (b.confirmedAt ?? '').localeCompare(a.confirmedAt ?? ''),
+                                  )[0];
+                                return (
+                                  <tr key={supplier.id} className={best ? 'recommended-row' : ''}>
+                                    <td>
+                                      <div className="supplier-cell">
+                                        <span className={`supplier-mark mark-${index % 3}`}>
+                                          {supplier.name
+                                            .split(' ')
+                                            .slice(0, 2)
+                                            .map((n) => n[0])
+                                            .join('')}
+                                        </span>
+                                        <div>
+                                          <button
+                                            className="supplier-name"
+                                            onClick={() => inspectSources(supplier.id)}
+                                          >
+                                            {supplier.name}
+                                          </button>
+                                          <small>{supplier.location}</small>
+                                          {best && (
+                                            <span className="recommended-label">
+                                              <Check size={11} />
+                                              Recommended
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td>
+                                      <strong className="numeric">
+                                        {candidate ? money(candidate.totalCents) : 'Needs quote'}
+                                      </strong>
+                                      <small>
+                                        {quote?.unitPriceCents !== null &&
+                                        quote?.unitPriceCents !== undefined
+                                          ? `${money(quote.unitPriceCents)} / unit`
+                                          : 'Request pricing'}
+                                      </small>
+                                    </td>
+                                    <td>
+                                      <span>
+                                        {candidate?.arrival
+                                          ? shortDate(candidate.arrival)
+                                          : 'Unconfirmed'}
+                                      </span>
+                                      <small>
+                                        {quote &&
+                                        quote.productionDays !== null &&
+                                        quote.transitDays !== null
+                                          ? `${quote.productionDays + quote.transitDays} ${quote.deliveryDaysKind} days`
+                                          : 'Ask the supplier'}
+                                      </small>
+                                    </td>
+                                    <td>
+                                      {candidate?.observationCount ? (
+                                        <>
+                                          <span
+                                            className={`history-pill ${candidate.lateCount ? 'warning' : 'positive'}`}
+                                          >
+                                            {candidate.lateCount ? (
+                                              <Clock size={12} />
+                                            ) : (
+                                              <CheckCircle2 size={12} />
+                                            )}{' '}
+                                            {candidate.lateCount
+                                              ? `${candidate.lateCount} late deliveries`
+                                              : 'On-time delivery'}
+                                          </span>
+                                          <small>
+                                            {candidate.observationCount} recorded{' '}
+                                            {candidate.observationCount === 1 ? 'order' : 'orders'}
+                                          </small>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="history-pill neutral">
+                                            No history yet
+                                          </span>
+                                          <small>Keep learning</small>
+                                        </>
+                                      )}
+                                    </td>
+                                    <td>
+                                      <button
+                                        className="icon-button"
+                                        aria-label={`View ${supplier.name} evidence`}
+                                        onClick={() => inspectSources(supplier.id)}
+                                      >
+                                        <ChevronRight size={16} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="table-foot">
+                          <span>
+                            <Link2 size={13} />
+                            All recommendations link back to their evidence.
+                          </span>
+                          <span>{live ? 'Live workspace' : 'Fictional suppliers · USD'}</span>
+                        </div>
+                      </section>
+                      <section className="recommendation" data-testid="recommendation">
+                        <div className="recommendation-icon">
+                          <Brain size={24} />
+                        </div>
+                        <div className="recommendation-content">
+                          <div className="inline-labels">
+                            <span className="eyebrow">
+                              {useMemory ? 'INFORMED BY YOUR EXPERIENCE' : 'QUOTE-ONLY COMPARISON'}
+                            </span>
+                            <span className="status-badge">
+                              {comparison?.status === 'ready'
+                                ? 'Ready to review'
+                                : comparison?.status === 'blocked'
+                                  ? 'Needs more information'
+                                  : 'Provisional'}
+                            </span>
+                          </div>
+                          <h2>
+                            {recommended
+                              ? `${recommended.name} is worth a closer look.`
+                              : 'Confirm your quotes to build a recommendation.'}
+                          </h2>
+                          <p>
+                            {comparison?.reasons.find(
+                              (r) => r.memoryIds.length && r.text.includes('late deliveries'),
+                            )?.text ??
+                              (recommended
+                                ? 'The comparison weighs your requirements, known costs, and available delivery evidence.'
+                                : 'Research a supplier, review its identity, and attach a confirmed quote.')}
+                          </p>
+                          {comparison?.reasons
+                            .filter((r) => r.text.startsWith('Your '))
+                            .map((r) => (
+                              <p className="preference-reason" key={r.text}>
+                                {r.text}
+                              </p>
+                            ))}
+                          {comparison?.status === 'provisional' && (
+                            <p className="warning-text">
+                              Some evidence is incomplete. Review the open questions before
+                              deciding.
+                            </p>
+                          )}
+                          <div className="recommendation-footer">
+                            <span>
+                              {comparison?.recalledMemoryIds.length ?? 0} memories considered{' '}
+                              <span>·</span> {comparison?.candidates.length ?? 0} quotes reviewed
+                            </span>
+                            <button
+                              className="button primary small"
+                              disabled={!recommended || busy}
+                              onClick={prepareDraft}
+                            >
+                              Draft follow-up
+                              <ArrowUpRight size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </section>
+                      <div className="next-step-row">
+                        <div>
+                          <span className="round-icon">
+                            <History size={18} />
+                          </span>
+                          <div>
+                            <strong>Close the loop.</strong>
+                            <p>Record the outcome so your next order starts smarter.</p>
+                          </div>
+                        </div>
+                        <button className="text-button" onClick={() => setDialog('event')}>
+                          Record an outcome <ArrowRight size={15} />
+                        </button>
+                      </div>
+                    </div>
+                    <aside className="memory-panel">
+                      <div className="memory-heading">
+                        <div>
+                          <Brain size={18} />
+                          <h2>Your working memory</h2>
+                        </div>
+                        <span className="count-badge">{activeMemories.length}</span>
+                      </div>
+                      <p className="muted">A little context makes a better decision.</p>
+                      <div className="memory-timeline">
+                        {activeMemories
+                          .filter((m) => !m.purpose || m.purpose === brief.purpose)
+                          .slice()
+                          .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+                          .slice(0, 4)
+                          .map((m) => (
+                            <div className="timeline-item" key={m.id}>
+                              <span
+                                className={`timeline-dot ${m.kind === 'outcome' ? 'amber' : ''}`}
+                              />
+                              <div className="timeline-meta">
+                                <span>{m.kind}</span>
+                                <time>{shortDate(m.occurredAt)}</time>
+                              </div>
+                              <p>{m.text}</p>
+                              <span className="memory-origin">
+                                {live
+                                  ? (workspace.memoryWrites.find((j) => j.recordId === m.id)
+                                      ?.state ?? 'pending')
+                                  : 'Sample memory'}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                      <button className="button secondary full" onClick={() => setView('memory')}>
+                        View all memories
+                        <ArrowRight size={15} />
+                      </button>
+                      <div className="teach-panel">
+                        <Leaf size={19} />
+                        <strong>You know your business best.</strong>
+                        <p>Tell Recall what matters. It will remember for next time.</p>
+                        <button className="text-button" onClick={() => setDialog('preference')}>
+                          Teach a preference <Plus size={14} />
+                        </button>
+                      </div>
+                    </aside>
+                  </div>
+                </>
+              )}
+              {view === 'memory' && (
+                <section className="records-section">
+                  <div className="section-heading">
+                    <div>
+                      <h2>{activeMemories.length} active memories</h2>
+                      <p>
+                        {live
+                          ? 'Queued records only influence decisions after they can be recalled from Walrus.'
+                          : 'Sample memories persist in this browser. They are not Mainnet writes.'}
+                      </p>
+                    </div>
+                    <button
+                      className="button primary small"
+                      onClick={() => setDialog('preference')}
+                    >
+                      Teach a preference
+                      <Plus size={15} />
+                    </button>
+                  </div>
+                  <div className="memory-records">
+                    {workspace.memories
+                      .slice()
+                      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+                      .map((m) => {
+                        const replaced = workspace.memories.some((c) => c.supersedesId === m.id);
+                        const job = workspace.memoryWrites.find((j) => j.recordId === m.id);
+                        return (
+                          <article key={m.id} className={replaced ? 'superseded' : ''}>
+                            <span className="record-icon">
+                              <Brain size={17} />
+                            </span>
+                            <div>
+                              <div className="inline-labels">
+                                <span className="eyebrow">
+                                  {m.kind}
+                                  {m.purpose ? ` · ${m.purpose}` : ''}
+                                </span>
+                                <span className="status-badge">
+                                  {replaced
+                                    ? 'Superseded'
+                                    : live
+                                      ? (job?.state ?? 'pending')
+                                      : 'Sample memory'}
+                                </span>
+                              </div>
+                              <p>{m.text}</p>
+                              <small>
+                                {shortDate(m.occurredAt)} ·{' '}
+                                {workspace.suppliers.find((s) => s.id === m.supplierId)?.name ??
+                                  'Your preferences'}{' '}
+                                · {m.id}
+                              </small>
+                              {job?.errorCode && (
+                                <p className="warning-text">
+                                  {job.errorCode.replaceAll('_', ' ')}. The write has not been
+                                  confirmed.
+                                </p>
+                              )}
+                              {live && job?.receipt && (
+                                <small>
+                                  Storage receipt:{' '}
+                                  {String(job.receipt.blobId ?? job.receipt.jobId ?? 'confirmed')}
+                                </small>
+                              )}
+                            </div>
+                            {live && job?.state !== 'saved' && (
+                              <button
+                                className="button secondary small"
+                                disabled={busy}
+                                onClick={() =>
+                                  void run(async () => {
+                                    await api(`memories/${m.id}/status`, {});
+                                    await refresh(false);
+                                  })
+                                }
+                              >
+                                <RefreshCw size={14} />
+                                Check storage
+                              </button>
+                            )}
+                          </article>
+                        );
+                      })}
+                  </div>
+                  {live && (
+                    <button
+                      className="button primary"
+                      disabled={busy}
+                      onClick={() => void run(() => refresh())}
+                    >
+                      Re-evaluate with recalled memory
+                    </button>
+                  )}
+                </section>
+              )}
+              {view === 'orders' && (
+                <section className="records-section">
+                  <div className="section-heading">
+                    <div>
+                      <h2>Commitments & outcomes</h2>
+                      <p>Real observations inform the next recommendation.</p>
+                    </div>
+                    <button className="button primary small" onClick={() => setDialog('event')}>
+                      <Plus size={15} />
+                      Record an outcome
+                    </button>
+                  </div>
+                  {workspace.orderEvents.length === 0 ? (
+                    <div className="empty-state">
+                      <History size={30} />
+                      <h3>The next chapter starts here.</h3>
+                      <p>Record a supplier commitment, delivery, or quality issue.</p>
+                      <button className="button secondary" onClick={() => setDialog('event')}>
+                        Add your first observation
+                      </button>
+                    </div>
+                  ) : (
+                    workspace.orderEvents
+                      .slice()
+                      .reverse()
+                      .map((e) => (
+                        <article className="order-record" key={e.id}>
+                          <span className="record-icon">
+                            <Package size={18} />
+                          </span>
+                          <div>
+                            <span className="eyebrow">
+                              {e.kind} · {shortDate(e.occurredAt)}
+                            </span>
+                            <h3>{workspace.suppliers.find((s) => s.id === e.supplierId)?.name}</h3>
+                            <p>{e.text}</p>
+                            {e.kind === 'delivery' && (
+                              <small>
+                                Promised {e.promisedDays} days · Actual {e.actualDays} days
+                              </small>
+                            )}
+                          </div>
+                        </article>
+                      ))
+                  )}
+                  <div className="payment-callout">
+                    <ShieldCheck size={22} />
+                    <div>
+                      <strong>Keep payment evidence separate.</strong>
+                      <p>A confirmed payment is useful context. It does not prove delivery.</p>
+                    </div>
+                    <button className="button secondary small" onClick={() => setDialog('payment')}>
+                      Check a payment
+                      <ArrowUpRight size={14} />
+                    </button>
+                  </div>
+                  {workspace.paymentChecks.map((p, i) => (
+                    <p className="notice" key={i}>
+                      {p.status === 'verified' ? 'Payment verified' : 'Payment unverified'}:{' '}
+                      {p.reason}
+                    </p>
+                  ))}
+                </section>
+              )}
+            </>
+          )}
+          <footer className="workspace-footer">
+            <span>
+              <span className="tiny-dot" />
+              {live
+                ? 'Walrus Memory + Tatum integration'
+                : 'A hands-on preview. No live services are called.'}
+            </span>
+            {!live && (
+              <button className="text-button" onClick={() => setDialog('reset')}>
+                <RefreshCw size={12} />
+                Reset sample
+              </button>
+            )}
+            {!live && (
+              <Link className="text-button" href="/live">
+                See the live Mainnet proof
+                <ArrowUpRight size={12} />
+              </Link>
+            )}
+            <span>Built to remember.</span>
+          </footer>
+        </main>
+      </div>
+      {dialog === 'brief' && (
+        <BriefDialog brief={brief} onSave={saveBrief} onClose={() => setDialog(null)} />
+      )}
+      {dialog === 'quote' && (
+        <QuoteDialog
+          workspace={workspace}
+          brief={brief}
+          live={live}
+          onSave={saveQuote}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog === 'preference' && (
+        <PreferenceDialog
+          workspace={workspace}
+          brief={brief}
+          live={live}
+          onSave={saveEvent}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog === 'event' && (
+        <EventDialog
+          workspace={workspace}
+          brief={brief}
+          live={live}
+          onSave={saveEvent}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog === 'research' && (
+        <ResearchDialog
+          live={live}
+          suppliers={workspace.suppliers.filter((s) => (live ? !s.fictional : true))}
+          evidence={workspace.evidence}
+          busy={busy}
+          error={error}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog === 'draft' && (
+        <DraftDialog draft={draft} busy={busy} onClose={() => setDialog(null)} />
+      )}
+      {dialog === 'payment' && (
+        <PaymentDialog
+          live={live}
+          workspace={workspace}
+          onVerify={checkPayment}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog === 'sources' && (
+        <Modal
+          title="Evidence behind the decision"
+          eyebrow={workspace.suppliers.find((s) => s.id === sourceSupplier)?.name}
+          onClose={() => setDialog(null)}
+        >
+          {workspace.evidence
+            .filter((e) => e.supplierId === sourceSupplier)
+            .map((e) => (
+              <article className="source-record" key={e.id}>
+                <span className="eyebrow">
+                  {e.kind.replace('_', ' ')} · {shortDate(e.retrievedAt)}
+                </span>
+                <p>{e.excerpt}</p>
+                {e.source.startsWith('https://') ? (
+                  <a href={e.source} target="_blank" rel="noreferrer" className="source-link">
+                    Open original source <ExternalLink size={13} />
+                  </a>
+                ) : (
+                  <small>{e.source}</small>
+                )}
+              </article>
+            ))}
+          {comparison?.excluded
+            .find((c) => c.supplierId === sourceSupplier)
+            ?.reasons.map((reason) => (
+              <p className="form-error" key={reason}>
+                {reason}
+              </p>
+            ))}
+          {comparison?.candidates
+            .find((c) => c.supplierId === sourceSupplier)
+            ?.questions.map((question) => (
+              <p className="notice" key={question}>
+                {question}
+              </p>
+            ))}
+          {comparison?.candidates
+            .find((c) => c.supplierId === sourceSupplier)
+            ?.reasons.map((r, i) => (
+              <div className="inset" key={i}>
+                <p>{r.text}</p>
+                <small>
+                  {r.memoryIds.length
+                    ? `Memory references: ${r.memoryIds.join(', ')}`
+                    : r.evidenceIds.length
+                      ? `Source references: ${r.evidenceIds.join(', ')}`
+                      : 'No recorded evidence for this point.'}
+                </small>
+              </div>
+            ))}
+        </Modal>
+      )}
+      {dialog === 'reset' && (
+        <Modal title="Start the sample again?" onClose={() => setDialog(null)}>
+          <p>
+            This replaces only the fictional workspace saved in this browser. Your operator
+            workspace is separate.
+          </p>
+          <div className="modal-actions">
+            <button className="button secondary" onClick={() => setDialog(null)}>
+              Keep my sample
+            </button>
+            <button
+              className="button primary"
+              onClick={() => {
+                saveSample(createSampleWorkspace());
+                setUseMemory(true);
+                setDialog(null);
+                setView('overview');
+                setNotice('Sample workspace reset.');
+              }}
+            >
+              Reset sample workspace
+            </button>
+          </div>
+        </Modal>
+      )}
+      {!ready && (
+        <span className="sr-only" role="status">
+          Loading saved workspace…
+        </span>
+      )}
+    </div>
+  );
 }
