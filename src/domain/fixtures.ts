@@ -2,7 +2,9 @@ import type {WorkspaceSnapshot,MemoryRecord,Quote} from './types';
 import {storeDate} from './date';
 export function dateAfter(date:string,days:number){const d=new Date(`${date.slice(0,10)}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);}
 export function createSampleWorkspace(today=storeDate(),storeId='sample'):WorkspaceSnapshot{
-  const now=`${today}T12:00:00Z`;const specification='Kraft mailer, 9 × 6 × 3 in';
+  // 06:00 UTC precedes Los Angeles midnight in both PST and PDT, so sample confirmations are never in
+  // the future and any quote a visitor confirms later counts as the newer one.
+  const now=`${today}T06:00:00Z`;const specification='Kraft mailer, 9 × 6 × 3 in';
   const brief={id:'launch-packaging',title:'Packaging for the winter launch',specification,quantity:500,destination:'Portland, OR, US',budgetCents:75000,neededBy:dateAfter(today,18),purpose:'launch' as const};
   const suppliers=[{id:'fixture-a',name:'Northline Packaging',domain:null,identityConfirmed:true,fictional:true,location:'Seattle, WA'},{id:'fixture-b',name:'Cedar Supply Co.',domain:null,identityConfirmed:true,fictional:true,location:'Portland, OR'},{id:'fixture-c',name:'Plainfield Paper',domain:null,identityConfirmed:true,fictional:true,location:'Sacramento, CA'}];
   const quotes:Quote[]=suppliers.map((s,i)=>({id:`quote-${i+1}`,supplierId:s.id,briefId:brief.id,specification,quantity:500,currency:'USD',unitPriceCents:[63,75,92][i],shippingCents:[4500,3500,0][i],taxCents:0,minimumOrder:250,quotedAt:today,productionDays:[5,4,7][i],transitDays:[3,2,3][i],deliveryDaysKind:'calendar',expiry:dateAfter(today,30),paymentTerms:'Net 30. Quote subject to written confirmation.',evidenceIds:[`evidence-${i+1}`],confirmedAt:now}));
