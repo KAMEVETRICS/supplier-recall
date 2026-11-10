@@ -1,4 +1,4 @@
-export class ProviderError extends Error {constructor(readonly code:string,readonly retryAfterSeconds?:number){super(code);}}
+export class ProviderError extends Error {constructor(readonly code:string,readonly retryAfterSeconds?:number,options?:{cause?:unknown}){super(code,options);}}
 export async function requestJson(url:string,init:RequestInit={},timeout=20000,fetcher:typeof fetch=fetch):Promise<unknown>{
   try{
     const response=await fetcher(url,{...init,signal:AbortSignal.timeout(timeout),redirect:'error'});
