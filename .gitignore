@@ -10,3 +10,5 @@ playwright-report/
 *.tsbuildinfo
 .superpowers/
 .npm-cache/
+AGENTS.md
+.claude/

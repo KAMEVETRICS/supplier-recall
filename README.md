@@ -2,7 +2,7 @@
 
 A sourcing workbench that remembers supplier experience. Compare packaging quotes, inspect the evidence, record what happened, and carry that lesson into the next purchasing decision.
 
-Built for Total Recall Track 2. The public sample uses fictional suppliers and browser-local storage. The private operator workspace integrates Tavily discovery, OpenAI quote extraction, Walrus Memory, and read-only Tatum Sui transaction evidence.
+Built for Total Recall Track 2. The public sample uses fictional suppliers and browser-local storage. The private operator workspace integrates Tavily discovery, quote extraction through NVIDIA Nemotron (or any OpenAI-compatible model), Walrus Memory, and read-only Tatum Sui transaction evidence.
 
 ## Run locally
 
@@ -48,13 +48,14 @@ Browser tests use installed Microsoft Edge at desktop and 390px mobile widths on
 - **Remember:** store-scoped libSQL entities plus a transactional outbox. Walrus records use versioned envelopes and stable idempotency keys. Live comparisons retrieve memory rather than silently using sample data.
 - **Follow through:** user-reviewed draft questions, delivery and quality observations, and read-only payment checks. No supplier messages, orders, or payments are sent.
 - **Access:** public sample state stays in the visitor's browser. Operator sessions use HttpOnly cookies, hashed tokens, same-origin mutations, and persistent usage budgets.
+- **Live proof:** [`/live`](http://127.0.0.1:3000/live) is public and read-only. It recalls the demo memories from Walrus Mainnet, shows how they change the launch and restock decisions, links each storage receipt to the stored blob, and checks a sample Sui payment through Tatum alongside a deliberate mismatch. It shows only the fictional scenario; fresh checks are cached for 60 seconds and rate-limited.
 
 The initial release supports English, USD quotes, US destinations, and simple Sui transfers. Business-day delivery promises require clarification. A matching payment does not prove shipment, quality, or supplier identity.
 
 Source map: `src/domain` contains contracts and fixtures; `src/features` the business rules; `src/server` storage/providers/auth; `src/components` the workbench; `scripts` the operational checks.
 
-## Submission material
+## Verified on Mainnet
 
-[Demo sequence](docs/demo.md) · [Blog draft](docs/blog-draft.md) · [Submission checklist](docs/submission.md) · [Approved design](docs/superpowers/specs/2026-11-08-supplier-recall-design.md)
-
-Live credentials, completed Mainnet evidence, deployment, public repository/blog URLs, and final form submission remain external setup and release steps until separately verified.
+- 13 fictional demo memories are stored in the Walrus Memory namespace `supplier-recall-demo`, each with a blob receipt.
+- A fresh process recalls them and the recommendation changes as designed: Northline on quotes alone, Cedar for a launch, and Northline again for a routine restock after the price-first correction.
+- `/live` re-runs these checks in public, read-only.
