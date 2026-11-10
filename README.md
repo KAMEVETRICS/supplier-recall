@@ -2,6 +2,8 @@
 
 A sourcing workbench that remembers supplier experience. Compare packaging quotes, inspect the evidence, record what happened, and carry that lesson into the next purchasing decision.
 
+**Try it:** [live demo](https://supplier-recall.vercel.app) (fictional sample that runs in your browser) · [live Mainnet proof](https://supplier-recall.vercel.app/live) (recalls the stored memories from Walrus and checks Tatum, read-only)
+
 Built for Total Recall Track 2. The public sample uses fictional suppliers and browser-local storage. The private operator workspace integrates Tavily discovery, quote extraction through NVIDIA Nemotron (or any OpenAI-compatible model), Walrus Memory, and read-only Tatum Sui transaction evidence.
 
 ## Run locally
@@ -48,7 +50,7 @@ Browser tests use installed Microsoft Edge at desktop and 390px mobile widths on
 - **Remember:** store-scoped libSQL entities plus a transactional outbox. Walrus records use versioned envelopes and stable idempotency keys. Live comparisons retrieve memory rather than silently using sample data.
 - **Follow through:** user-reviewed draft questions, delivery and quality observations, and read-only payment checks. No supplier messages, orders, or payments are sent.
 - **Access:** public sample state stays in the visitor's browser. Operator sessions use HttpOnly cookies, hashed tokens, same-origin mutations, and persistent usage budgets.
-- **Live proof:** [`/live`](http://127.0.0.1:3000/live) is public and read-only. It recalls the demo memories from Walrus Mainnet, shows how they change the launch and restock decisions, links each storage receipt to the stored blob, and checks a sample Sui payment through Tatum alongside a deliberate mismatch. It shows only the fictional scenario; fresh checks are cached for 60 seconds and rate-limited.
+- **Live proof:** [`/live`](https://supplier-recall.vercel.app/live) is public and read-only. It recalls the demo memories from Walrus Mainnet, shows how they change the launch and restock decisions, links each storage receipt to the stored blob, and checks a sample Sui payment through Tatum alongside a deliberate mismatch. It shows only the fictional scenario; fresh checks are cached for 60 seconds and rate-limited.
 
 The initial release supports English, USD quotes, US destinations, and simple Sui transfers. Business-day delivery promises require clarification. A matching payment does not prove shipment, quality, or supplier identity.
 
